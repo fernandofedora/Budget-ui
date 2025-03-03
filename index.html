@@ -11,7 +11,11 @@
     </style>
 </head>
 <body class="container mt-5">
-    <h1 class="mb-4">Gestor de Presupuestos</h1>
+
+    <nav class="mb-4 d-flex justify-content-between align-items-center">
+        <h1 class="mb-0">Gestor de Presupuestos</h1>
+        <button id="logoutBtn" class="btn btn-outline-danger">Cerrar Sesión</button>
+    </nav>
     
     <!-- Formulario de presupuesto -->
     <div class="card mb-4">
@@ -118,7 +122,9 @@
       // Función cargarPresupuestos (corregida)
     const cargarPresupuestos = async () => {
     try {
-        const res = await fetch(`${API_URL}/presupuestos`);
+        const res = await fetch(`${API_URL}/presupuestos`, {
+         credentials: 'include' // Agregar esto
+         });
         if (!res.ok) throw new Error('Error al cargar presupuestos');
         const presupuestos = await res.json();
 
@@ -146,8 +152,46 @@
         }
     };
 
-        // Inicializar
-        cargarPresupuestos();
+    // Verificar autenticación al cargar
+    fetch(`${API_URL}/api/check-auth`, {
+    credentials: 'include'
+}).then(response => {
+    console.log('Estado de /api/check-auth:', response.status);
+    console.log('Headers de respuesta:', response.headers.get('Set-Cookie'));
+    return response.json().catch(() => ({})); // Evitar error si no hay JSON
+}).then(data => {
+    console.log('Datos de /api/check-auth:', data);
+    if (!data.authenticated) {
+        console.log('No autenticado, redirigiendo a login...');
+        window.location.href = '/login.html';
+    }
+     else {
+        cargarPresupuestos(); // Cargar datos si está autenticado
+    }
+}).catch(error => {
+    console.error('Error en /api/check-auth:', error);
+    window.location.href = '/login.html';
+});
+
+    // Manejar logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+    fetch(`${API_URL}/api/logout`, {
+        method: 'POST',
+        credentials: 'include'
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Error en el servidor');
+        // Forzar recarga limpia
+        window.location.href = '/login.html?cache=' + new Date().getTime();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al cerrar sesión: ' + error.message);
+    });
+});
+    // Inicializar
+ cargarPresupuestos();
+
     </script>
 </body>
 </html>
