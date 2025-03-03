@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Autenticación</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h2 class="text-center mb-4">Gestor de Presupuestos</h2>
+
+                    <div id="alert" class="alert d-none"></div>
+
+                    <form id="loginForm">
+                        <div class="mb-3">
+                            <input type="email" class="form-control" placeholder="Correo electrónico" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="password" class="form-control" placeholder="Contraseña" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Ingresar</button>
+                    </form>
+
+                    <hr>
+
+                    <button id="toggleRegister" class="btn btn-link">¿No tienes cuenta? Regístrate</button>
+
+                    <form id="registerForm" class="d-none">
+                        <div class="mb-3">
+                            <input type="email" class="form-control" placeholder="Correo electrónico" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="password" class="form-control" placeholder="Contraseña" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Registrarse</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000';
+        const alertElement = document.getElementById('alert');
+
+        // Funciones auxiliares
+        function showAlert(message, type) {
+            alertElement.textContent = message;
+            alertElement.className = `alert alert-${type} d-block`;
+            setTimeout(() => alertElement.classList.add('d-none'), 3000);
+        }
+
+        document.getElementById('toggleRegister').addEventListener('click', toggleForms);
+
+        function toggleForms() {
+            document.getElementById('loginForm').classList.toggle('d-none');
+            document.getElementById('registerForm').classList.toggle('d-none');
+            document.getElementById('toggleRegister').textContent =
+                document.getElementById('loginForm').classList.contains('d-none') ?
+                '¿Ya tienes cuenta? Ingresa aquí' : '¿No tienes cuenta? Regístrate';
+        }
+
+        // Manejar registro
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.querySelector('#registerForm input[type="email"]').value;
+            const password = document.querySelector('#registerForm input[type="password"]').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+
+                showAlert('Registro exitoso!', 'success');
+                toggleForms();
+
+            } catch (error) {
+                console.error("Error en el registro:", error);
+                showAlert('Error: ' + error.message, 'danger');
+            }
+        });
+
+        // Manejar login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const [email, password] = e.target.querySelectorAll('input');
+        try {
+            const response = await fetch(`${API_URL}/api/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email.value, password: password.value }),
+                credentials: 'include'
+            });
+            const data = await response.json();
+            if (response.ok) {
+                showAlert(data.message, 'success');
+                setTimeout(() => {
+                    window.location.replace('index.html'); // Usar replace para evitar historial
+                }, 1000);
+            } else {
+                showAlert(data.error, 'danger');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('Ocurrió un error al iniciar sesión', 'danger');
+        }
+    });
+    </script>
+</body>
+</html>
