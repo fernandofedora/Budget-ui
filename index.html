@@ -6,17 +6,21 @@
     <title>Gestor de Presupuestos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .progress { height: 30px; margin: 20px 0; }
-        .progress-bar { transition: width 0.3s; }
+        .progress {
+            height: 30px;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            transition: width 0.3s;
+        }
     </style>
 </head>
 <body class="container mt-5">
-
     <nav class="mb-4 d-flex justify-content-between align-items-center">
         <h1 class="mb-0">Gestor de Presupuestos</h1>
         <button id="logoutBtn" class="btn btn-outline-danger">Cerrar Sesión</button>
     </nav>
-    
+
     <!-- Formulario de presupuesto -->
     <div class="card mb-4">
         <div class="card-body">
@@ -26,7 +30,8 @@
                     <input type="text" id="nombrePresupuesto" class="form-control" placeholder="Nombre" required>
                 </div>
                 <div class="mb-3">
-                    <input type="number" id="montoPresupuesto" class="form-control" placeholder="Monto inicial" min="0" step="0.01" required>
+                    <input type="number" id="montoPresupuesto" class="form-control" placeholder="Monto inicial" min="0"
+                        step="0.01" required>
                 </div>
                 <button type="submit" class="btn btn-success">Crear</button>
             </form>
@@ -39,13 +44,17 @@
             <h3 class="card-title">Registrar Gasto</h3>
             <form id="form-gasto">
                 <div class="mb-3">
-                    <input type="number" id="presupuestoId" class="form-control" placeholder="ID del Presupuesto" required>
+                    <!-- Cambio clave: Input por Select -->
+                    <select id="presupuestoId" class="form-select" required>
+                        <option value="">Seleccione un presupuesto</option>
+                    </select>
                 </div>
                 <div class="mb-3">
                     <input type="text" id="descripcionGasto" class="form-control" placeholder="Descripción" required>
                 </div>
                 <div class="mb-3">
-                    <input type="number" id="montoGasto" class="form-control" placeholder="Monto" min="0" step="0.01" required>
+                    <input type="number" id="montoGasto" class="form-control" placeholder="Monto" min="0" step="0.01"
+                        required>
                 </div>
                 <button type="submit" class="btn btn-warning">Agregar Gasto</button>
             </form>
@@ -58,7 +67,16 @@
     <script>
         const API_URL = 'http://localhost:3000';
 
-        // Crear presupuesto
+        window.onload = function () {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+            } else {
+                cargarPresupuestos();
+            }
+        };
+
+        // Crear presupuesto (sin cambios)
         document.getElementById('form-presupuesto').addEventListener('submit', async (e) => {
             e.preventDefault();
             const presupuesto = {
@@ -67,12 +85,16 @@
             };
 
             try {
+                const token = localStorage.getItem('token');
                 const res = await fetch(`${API_URL}/presupuestos`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify(presupuesto)
                 });
-                
+
                 if (!res.ok) throw new Error(await res.text());
                 document.getElementById('form-presupuesto').reset();
                 cargarPresupuestos();
@@ -81,7 +103,7 @@
             }
         });
 
-        // Agregar gasto
+        // Agregar gasto (sin cambios en la lógica)
         document.getElementById('form-gasto').addEventListener('submit', async (e) => {
             e.preventDefault();
             const gasto = {
@@ -91,9 +113,13 @@
             };
 
             try {
+                const token = localStorage.getItem('token');
                 const res = await fetch(`${API_URL}/gastos`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify(gasto)
                 });
 
@@ -105,12 +131,18 @@
             }
         });
 
-        // Eliminar presupuesto
+        // Eliminar presupuesto (sin cambios)
         const eliminarPresupuesto = async (id) => {
             if (!confirm('¿Eliminar este presupuesto y sus gastos?')) return;
-            
+
             try {
-                const res = await fetch(`${API_URL}/presupuestos/${id}`, { method: 'DELETE' });
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/presupuestos/${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
                 if (!res.ok) throw new Error(await res.text());
                 cargarPresupuestos();
             } catch (err) {
@@ -118,80 +150,58 @@
             }
         };
 
-        // Cargar y mostrar presupuestos
-      // Función cargarPresupuestos (corregida)
-    const cargarPresupuestos = async () => {
-    try {
-        const res = await fetch(`${API_URL}/presupuestos`, {
-         credentials: 'include' // Agregar esto
-         });
-        if (!res.ok) throw new Error('Error al cargar presupuestos');
-        const presupuestos = await res.json();
+        // Función modificada: Mostrar ID secuencial y actualizar select
+        const cargarPresupuestos = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/presupuestos`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (!res.ok) throw new Error('Error al cargar presupuestos');
+                const presupuestos = await res.json();
 
-        const container = document.getElementById('presupuestos-container');
-        container.innerHTML = presupuestos.map(p => `
-            <div class="card mb-3">
-                <div class="card-body">
-                    <button class="btn btn-danger btn-sm float-end" onclick="eliminarPresupuesto(${p.id})">
-                        Eliminar
-                    </button>
-                    <h5>${p.nombre} (ID: ${p.id})</h5>
-                    <p class="mb-1">Total: $${parseFloat(p.monto).toFixed(2)}</p>
-                    <p class="mb-1">Restante: $${parseFloat(p.restante).toFixed(2)}</p>
-                    <div class="progress">
-                        <div class="progress-bar bg-success" 
-                            style="width: ${(p.restante / p.monto) * 100}%">
-                            ${Math.round((p.restante / p.monto) * 100)}%
+                // Mostrar presupuestos con ID secuencial
+                const container = document.getElementById('presupuestos-container');
+                container.innerHTML = presupuestos.map((p, index) => `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <button class="btn btn-danger btn-sm float-end" 
+                                    onclick="eliminarPresupuesto(${p.id})">
+                                Eliminar
+                            </button>
+                            <h5>${p.nombre} (ID: ${index + 1})</h5>
+                            <p class="mb-1">Total: $${parseFloat(p.monto).toFixed(2)}</p>
+                            <p class="mb-1">Restante: $${parseFloat(p.restante).toFixed(2)}</p>
+                            <div class="progress">
+                                <div class="progress-bar bg-success" 
+                                    style="width: ${(p.restante / p.monto) * 100}%">
+                                    ${Math.round((p.restante / p.monto) * 100)}%
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        `).join('');
-     } catch (err) {
-        console.error(err);
-        }
-    };
+                `).join('');
 
-    // Verificar autenticación al cargar
-    fetch(`${API_URL}/api/check-auth`, {
-    credentials: 'include'
-}).then(response => {
-    console.log('Estado de /api/check-auth:', response.status);
-    console.log('Headers de respuesta:', response.headers.get('Set-Cookie'));
-    return response.json().catch(() => ({})); // Evitar error si no hay JSON
-}).then(data => {
-    console.log('Datos de /api/check-auth:', data);
-    if (!data.authenticated) {
-        console.log('No autenticado, redirigiendo a login...');
-        window.location.href = '/login.html';
-    }
-     else {
-        cargarPresupuestos(); // Cargar datos si está autenticado
-    }
-}).catch(error => {
-    console.error('Error en /api/check-auth:', error);
-    window.location.href = '/login.html';
-});
+                // Actualizar selector de presupuestos
+                const select = document.getElementById('presupuestoId');
+                select.innerHTML = '<option value="">Seleccione un presupuesto</option>' + 
+                    presupuestos.map((p, index) => 
+                        `<option value="${p.id}">${p.nombre} (ID: ${index + 1})</option>`
+                    ).join('');
 
-    // Manejar logout
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-    fetch(`${API_URL}/api/logout`, {
-        method: 'POST',
-        credentials: 'include'
-    })
-    .then(response => {
-        if (!response.ok) throw new Error('Error en el servidor');
-        // Forzar recarga limpia
-        window.location.href = '/login.html?cache=' + new Date().getTime();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error al cerrar sesión: ' + error.message);
-    });
-});
-    // Inicializar
- cargarPresupuestos();
+            } catch (err) {
+                console.error(err);
+            }
+        };
 
+        // Logout (sin cambios)
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        });
     </script>
 </body>
 </html>
