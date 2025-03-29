@@ -13,6 +13,30 @@
         .progress-bar {
             transition: width 0.3s;
         }
+        .accordion {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .accordion-item {
+            border-bottom: 1px solid #ddd;
+        }
+        .accordion-header {
+            background-color: #f7f7f7;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .accordion-content {
+            display: none;
+            padding: 10px;
+            background-color: #fff;
+        }
+        .accordion-content.show {
+            display: block;
+        }
     </style>
 </head>
 <body class="container mt-5">
@@ -44,7 +68,6 @@
             <h3 class="card-title">Registrar Gasto</h3>
             <form id="form-gasto">
                 <div class="mb-3">
-                    <!-- Cambio clave: Input por Select -->
                     <select id="presupuestoId" class="form-select" required>
                         <option value="">Seleccione un presupuesto</option>
                     </select>
@@ -61,8 +84,27 @@
         </div>
     </div>
 
-    <!-- Lista de presupuestos -->
-    <div id="presupuestos-container"></div>
+    <!-- Formulario para Actualizar Presupuesto -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h3 class="card-title">Actualizar Presupuesto</h3>
+            <form id="update-presupuesto-form">
+                <input type="hidden" id="presupuesto-id" value="">
+                <div class="mb-3">
+                    <input type="text" id="nombre-actualizar" class="form-control" placeholder="Nombre" required>
+                </div>
+                <div class="mb-3">
+                    <input type="number" id="monto-actualizar" class="form-control" placeholder="Monto" min="0" step="0.01" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Actualizar Presupuesto</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de presupuestos con acordeón simple -->
+    <div id="accordionPresupuestos" class="accordion">
+        <!-- Presupuestos y gastos se mostrarán aquí -->
+    </div>
 
     <script>
         const API_URL = 'http://localhost:3000';
@@ -76,7 +118,7 @@
             }
         };
 
-        // Crear presupuesto (sin cambios)
+        // Crear presupuesto
         document.getElementById('form-presupuesto').addEventListener('submit', async (e) => {
             e.preventDefault();
             const presupuesto = {
@@ -103,7 +145,7 @@
             }
         });
 
-        // Agregar gasto (sin cambios en la lógica)
+        // Agregar gasto
         document.getElementById('form-gasto').addEventListener('submit', async (e) => {
             e.preventDefault();
             const gasto = {
@@ -131,7 +173,7 @@
             }
         });
 
-        // Eliminar presupuesto (sin cambios)
+        // Eliminar presupuesto
         const eliminarPresupuesto = async (id) => {
             if (!confirm('¿Eliminar este presupuesto y sus gastos?')) return;
 
@@ -150,7 +192,33 @@
             }
         };
 
-        // Función modificada: Mostrar ID secuencial y actualizar select
+        // Actualizar presupuesto
+        document.getElementById('update-presupuesto-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('presupuesto-id').value;
+            const nombre = document.getElementById('nombre-actualizar').value;
+            const monto = parseFloat(document.getElementById('monto-actualizar').value);
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch(`${API_URL}/presupuestos/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ nombre, monto })
+                });
+
+                if (!res.ok) throw new Error(await res.text());
+                alert('Presupuesto actualizado exitosamente');
+                cargarPresupuestos();
+            } catch (err) {
+                alert('Error al actualizar presupuesto: ' + err.message);
+            }
+        });
+
+        // Función para cargar presupuestos y gastos
         const cargarPresupuestos = async () => {
             try {
                 const token = localStorage.getItem('token');
@@ -159,37 +227,72 @@
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                
+
                 if (!res.ok) throw new Error('Error al cargar presupuestos');
                 const presupuestos = await res.json();
+                console.log('Presupuestos:', presupuestos); // Debugging log
 
-                // Mostrar presupuestos con ID secuencial
-                const container = document.getElementById('presupuestos-container');
-                container.innerHTML = presupuestos.map((p, index) => `
-                    <div class="card mb-3">
-                        <div class="card-body">
-                            <button class="btn btn-danger btn-sm float-end" 
-                                    onclick="eliminarPresupuesto(${p.id})">
-                                Eliminar
-                            </button>
-                            <h5>${p.nombre} (ID: ${index + 1})</h5>
-                            <p class="mb-1">Total: $${parseFloat(p.monto).toFixed(2)}</p>
-                            <p class="mb-1">Restante: $${parseFloat(p.restante).toFixed(2)}</p>
-                            <div class="progress">
-                                <div class="progress-bar bg-success" 
-                                    style="width: ${(p.restante / p.monto) * 100}%">
-                                    ${Math.round((p.restante / p.monto) * 100)}%
-                                </div>
+                // Mostrar presupuestos con acordeón simple
+                const accordionContainer = document.getElementById('accordionPresupuestos');
+                accordionContainer.innerHTML = '';
+
+                presupuestos.forEach((p, index) => {
+                    // Cargar gastos para cada presupuesto
+                    fetch(`${API_URL}/gastos?presupuestoId=${p.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    })
+                    .then(gastosRes => gastosRes.json())
+                    .then(gastos => {
+                        console.log('Gastos para presupuesto ID', p.id, ':', gastos); // Debugging log
+
+                        const gastosList = gastos.map(g => {
+                            const monto = parseFloat(g.monto);
+                            const montoFormatted = isNaN(monto) ? 'N/A' : `$${monto.toFixed(2)}`;
+                            return `
+                                <li class="list-group-item">
+                                    <strong>${g.descripcion}</strong>: ${montoFormatted} - ${new Date(g.created_at).toLocaleString()}
+                                </li>
+                            `;
+                        }).join('');
+
+                        const accordionItem = document.createElement('div');
+                        accordionItem.classList.add('accordion-item');
+                        accordionItem.innerHTML = `
+                            <div class="accordion-header" onclick="toggleAccordion(${index})">
+                                ${p.nombre} (ID: ${p.id})
                             </div>
-                        </div>
-                    </div>
-                `).join('');
+                            <div class="accordion-content">
+                                <p>Total: $${p.monto.toFixed(2)}</p>
+                                <p>Restante: $${p.restante.toFixed(2)}</p>
+                                <div class="progress">
+                                    <div class="progress-bar bg-success" role="progressbar"
+                                        style="width: ${(p.restante / p.monto) * 100}%" aria-valuenow="${(p.restante / p.monto) * 100}"
+                                        aria-valuemin="0" aria-valuemax="100">
+                                        ${Math.round((p.restante / p.monto) * 100)}%
+                                    </div>
+                                </div>
+                                <ul class="list-group mt-3">
+                                    ${gastosList}
+                                </ul>
+                                <button class="btn btn-danger btn-sm mt-2" onclick="eliminarPresupuesto(${p.id})">
+                                    Eliminar
+                                </button>
+                                <button class="btn btn-warning btn-sm mt-2 ms-2" onclick="editPresupuesto(${p.id}, '${p.nombre}', ${p.monto})">
+                                    Editar
+                                </button>
+                            </div>
+                        `;
+                        accordionContainer.appendChild(accordionItem);
+                    });
+                });
 
                 // Actualizar selector de presupuestos
                 const select = document.getElementById('presupuestoId');
-                select.innerHTML = '<option value="">Seleccione un presupuesto</option>' + 
-                    presupuestos.map((p, index) => 
-                        `<option value="${p.id}">${p.nombre} (ID: ${index + 1})</option>`
+                select.innerHTML = '<option value="">Seleccione un presupuesto</option>' +
+                    presupuestos.map((p) =>
+                        `<option value="${p.id}">${p.nombre} (ID: ${p.id})</option>`
                     ).join('');
 
             } catch (err) {
@@ -197,11 +300,26 @@
             }
         };
 
-        // Logout (sin cambios)
+        // Función para llenar el formulario de actualización
+        function editPresupuesto(id, nombre, monto) {
+            document.getElementById('presupuesto-id').value = id;
+            document.getElementById('nombre-actualizar').value = nombre;
+            document.getElementById('monto-actualizar').value = monto;
+        }
+
+        // Función para alternar el acordeón
+        function toggleAccordion(index) {
+            const contents = document.querySelectorAll('.accordion-content');
+            contents[index].classList.toggle('show');
+        }
+
+        // Logout
         document.getElementById('logoutBtn').addEventListener('click', () => {
             localStorage.removeItem('token');
             window.location.href = 'login.html';
         });
     </script>
+
+    <!-- No need for Bootstrap JS since we're using our own accordion -->
 </body>
 </html>
